@@ -18,10 +18,15 @@ const config = {
     debug: Boolean(readConfig("debugLogging", false))
 };
 
-const suppressed = new Map();
-const opaqueBarriers = new Map();
+// A window can belong to more than one visible desktop during KWin's slide
+// animation. Each override therefore records the desktop that requested it.
+const overrides = new Map();
 const watched = new Set();
+const lastActiveByDesktop = new Map();
+const desktopObjects = new Map();
+let visibleDesktopKeys = new Set();
 let changingOpacity = false;
+let lastDesktop = null;
 
 function clamp(value, minimum, maximum) {
     return Math.min(Math.max(value, minimum), maximum);
@@ -87,6 +92,7 @@ function isEligible(window) {
         && window.normalWindow
         && !window.specialWindow
         && !window.fullScreen
+        && !window.onAllDesktops
         && !isProtected(window);
 }
 
@@ -95,24 +101,43 @@ function isBarrier(window) {
         return false;
     }
 
-    return isProtected(window) || !window.normalWindow;
+    return isProtected(window) || window.onAllDesktops || !window.normalWindow;
 }
 
-function sharesDesktop(first, second) {
-    if (!first || !second || first.onAllDesktops || second.onAllDesktops) {
-        return true;
+function desktopKey(desktop) {
+    if (!desktop) {
+        return "";
+    }
+    return String(desktop.id || desktop.x11DesktopNumber || "");
+}
+
+function rememberDesktop(desktop) {
+    const key = desktopKey(desktop);
+    if (key) {
+        desktopObjects.set(key, desktop);
+    }
+    return key;
+}
+
+function windowOnDesktop(window, key) {
+    if (!window || window.onAllDesktops) {
+        return false;
     }
 
-    const firstDesktops = first.desktops || [];
-    const secondDesktops = second.desktops || [];
+    return (window.desktops || []).some(desktop => desktopKey(desktop) === key);
+}
 
-    if (firstDesktops.length === 0 || secondDesktops.length === 0) {
-        return true;
+function rememberActive(window) {
+    if (!window || window.onAllDesktops) {
+        return;
     }
 
-    return firstDesktops.some(firstDesktop => secondDesktops.some(secondDesktop =>
-        firstDesktop.id === secondDesktop.id
-    ));
+    (window.desktops || []).forEach(desktop => {
+        const key = rememberDesktop(desktop);
+        if (key) {
+            lastActiveByDesktop.set(key, window);
+        }
+    });
 }
 
 function intersectionRatio(top, lower) {
@@ -145,82 +170,173 @@ function setOpacity(window, opacity) {
     changingOpacity = false;
 }
 
-function suppress(window) {
-    if (!isLive(window) || suppressed.has(window)) {
+function applyOverride(window, key, mode) {
+    if (!isLive(window)) {
         return;
     }
 
-    suppressed.set(window, Number(window.opacity));
-    setOpacity(window, 0);
-    debug("suppressed", window.resourceClass, window.caption);
+    let record = overrides.get(window);
+    if (!record) {
+        record = {
+            baseOpacity: Number(window.opacity),
+            owners: new Map()
+        };
+        overrides.set(window, record);
+    }
+
+    record.owners.set(key, mode);
+    const hasBarrier = Array.from(record.owners.values()).some(value => value === "barrier");
+    setOpacity(window, hasBarrier ? 1 : 0);
+    debug(mode, window.resourceClass, window.caption, "desktop", key);
 }
 
-function makeOpaqueBarrier(window) {
-    if (!isLive(window) || opaqueBarriers.has(window)) {
+function releaseOverride(window, key) {
+    const record = overrides.get(window);
+    if (!record) {
         return;
     }
 
-    opaqueBarriers.set(window, Number(window.opacity));
-    setOpacity(window, 1);
-    debug("opaque barrier", window.resourceClass, window.caption);
+    record.owners.delete(key);
+    if (record.owners.size === 0) {
+        if (isLive(window)) {
+            setOpacity(window, record.baseOpacity);
+        }
+        overrides.delete(window);
+        return;
+    }
+
+    const hasBarrier = Array.from(record.owners.values()).some(value => value === "barrier");
+    setOpacity(window, hasBarrier ? 1 : 0);
 }
 
-function restoreAll() {
-    for (const [window, opacity] of suppressed) {
-        if (isLive(window)) {
-            setOpacity(window, opacity);
+function releaseDesktop(key) {
+    for (const [window, record] of overrides) {
+        if (record.owners.has(key)) {
+            releaseOverride(window, key);
         }
     }
-    suppressed.clear();
+}
 
-    for (const [window, opacity] of opaqueBarriers) {
-        if (isLive(window)) {
-            setOpacity(window, opacity);
+function releaseWindow(window) {
+    const record = overrides.get(window);
+    if (record) {
+        overrides.delete(window);
+    }
+    for (const [key, active] of lastActiveByDesktop) {
+        if (active === window) {
+            lastActiveByDesktop.delete(key);
         }
     }
-    opaqueBarriers.clear();
 }
 
-function isLowerOverlapping(active, candidate, activeIndex, candidateIndex) {
-    return candidateIndex < activeIndex
-        && isLive(candidate)
-        && sharesDesktop(active, candidate)
-        && intersectionRatio(active, candidate) >= config.overlapThreshold;
+function sharesDesktop(first, second) {
+    if (!first || !second || first.onAllDesktops || second.onAllDesktops) {
+        return true;
+    }
+
+    const firstDesktops = first.desktops || [];
+    const secondDesktops = second.desktops || [];
+
+    if (firstDesktops.length === 0 || secondDesktops.length === 0) {
+        return true;
+    }
+
+    return firstDesktops.some(firstDesktop => secondDesktops.some(secondDesktop =>
+        desktopKey(firstDesktop) === desktopKey(secondDesktop)
+    ));
 }
 
-function recompute() {
+function leaderForDesktop(desktop, key, stack) {
+    const remembered = lastActiveByDesktop.get(key);
+    if (isLive(remembered) && windowOnDesktop(remembered, key)) {
+        return remembered;
+    }
+
+    for (let index = stack.length - 1; index >= 0; index -= 1) {
+        const candidate = stack[index];
+        if (isLive(candidate) && windowOnDesktop(candidate, key)) {
+            return candidate;
+        }
+    }
+
+    return null;
+}
+
+function lowerWindowsFor(leader, key, stack) {
+    const leaderIndex = stack.indexOf(leader);
+    if (leaderIndex < 0) {
+        return [];
+    }
+
+    const lower = [];
+    for (let index = 0; index < leaderIndex; index += 1) {
+        const candidate = stack[index];
+        if (!isLive(candidate)
+            || !windowOnDesktop(candidate, key)
+            || !sharesDesktop(leader, candidate)
+            || intersectionRatio(leader, candidate) < config.overlapThreshold) {
+            continue;
+        }
+        lower.push(candidate);
+    }
+    return lower;
+}
+
+function recomputeDesktop(desktop, key) {
+    if (!desktop || !key) {
+        return;
+    }
+
+    releaseDesktop(key);
+
+    const stack = workspace.stackingOrder || [];
+    const leader = leaderForDesktop(desktop, key, stack);
+    if (!isEligible(leader)) {
+        return;
+    }
+
+    const lower = lowerWindowsFor(leader, key, stack);
+    if (config.barrierMode && lower.some(isBarrier)) {
+        applyOverride(leader, key, "barrier");
+        return;
+    }
+
+    lower.filter(isEligible).forEach(window => applyOverride(window, key, "hidden"));
+}
+
+function recomputeVisibleDesktops() {
     if (changingOpacity) {
         return;
     }
 
-    restoreAll();
-
-    const active = workspace.activeWindow;
-    if (!isEligible(active)) {
-        return;
+    for (const key of visibleDesktopKeys) {
+        recomputeDesktop(desktopObjects.get(key), key);
     }
+}
 
-    const stack = workspace.stackingOrder || [];
-    const activeIndex = stack.indexOf(active);
-    if (activeIndex < 0) {
-        return;
-    }
-
-    const lower = [];
-    for (let index = 0; index < activeIndex; index += 1) {
-        const candidate = stack[index];
-        if (isLowerOverlapping(active, candidate, activeIndex, index)) {
-            lower.push(candidate);
+function setVisibleDesktops(desktops) {
+    const next = new Set(desktops.map(rememberDesktop).filter(key => key));
+    for (const key of visibleDesktopKeys) {
+        if (!next.has(key)) {
+            releaseDesktop(key);
         }
     }
+    visibleDesktopKeys = next;
+}
 
-    const barrier = lower.some(isBarrier);
-    if (barrier && config.barrierMode) {
-        makeOpaqueBarrier(active);
-        return;
+function onDesktopChanged(previous, current) {
+    const previousKey = rememberDesktop(previous || lastDesktop);
+    const currentKey = rememberDesktop(current || workspace.currentDesktop);
+    lastDesktop = current || workspace.currentDesktop;
+
+    setVisibleDesktops([previous || lastDesktop, current || workspace.currentDesktop]);
+    if (previousKey) {
+        desktopObjects.set(previousKey, previous || desktopObjects.get(previousKey));
     }
-
-    lower.filter(isEligible).forEach(suppress);
+    if (currentKey) {
+        desktopObjects.set(currentKey, current || desktopObjects.get(currentKey));
+    }
+    recomputeVisibleDesktops();
 }
 
 function watch(window) {
@@ -229,28 +345,34 @@ function watch(window) {
     }
 
     watched.add(window);
-    window.frameGeometryChanged.connect(recompute);
-    window.fullScreenChanged.connect(recompute);
-    window.minimizedChanged.connect(recompute);
-    window.outputChanged.connect(recompute);
+    window.frameGeometryChanged.connect(recomputeVisibleDesktops);
+    window.fullScreenChanged.connect(recomputeVisibleDesktops);
+    window.minimizedChanged.connect(recomputeVisibleDesktops);
+    window.outputChanged.connect(recomputeVisibleDesktops);
 }
 
 function forget(window) {
-    suppressed.delete(window);
-    opaqueBarriers.delete(window);
+    releaseWindow(window);
     watched.delete(window);
-    recompute();
+    recomputeVisibleDesktops();
 }
 
+lastDesktop = workspace.currentDesktop;
+rememberDesktop(lastDesktop);
+setVisibleDesktops([lastDesktop]);
+rememberActive(workspace.activeWindow);
 workspace.windowList().forEach(watch);
 workspace.windowAdded.connect(window => {
     watch(window);
-    recompute();
+    recomputeVisibleDesktops();
 });
 workspace.windowRemoved.connect(forget);
-workspace.windowActivated.connect(recompute);
-workspace.currentDesktopChanged.connect(recompute);
-workspace.currentActivityChanged.connect(recompute);
-workspace.screensChanged.connect(recompute);
+workspace.windowActivated.connect(window => {
+    rememberActive(window);
+    recomputeVisibleDesktops();
+});
+workspace.currentDesktopChanged.connect(onDesktopChanged);
+workspace.currentActivityChanged.connect(recomputeVisibleDesktops);
+workspace.screensChanged.connect(recomputeVisibleDesktops);
 
-recompute();
+recomputeVisibleDesktops();

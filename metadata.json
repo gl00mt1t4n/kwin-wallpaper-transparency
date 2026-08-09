@@ -9,7 +9,7 @@
             }
         ],
         "Id": "wallpaper-transparency",
-        "Version": "0.1.0",
+        "Version": "0.2.0",
         "License": "GPL-3.0-or-later",
         "Website": "https://github.com/gl00mt1t4n/kwin-wallpaper-transparency"
     },
