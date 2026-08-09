@@ -27,6 +27,8 @@ const desktopObjects = new Map();
 let visibleDesktopKeys = new Set();
 let changingOpacity = false;
 let lastDesktop = null;
+const manuallyProtectedWindows = new Set();
+const manuallyProtectedApplications = new Set();
 
 function clamp(value, minimum, maximum) {
     return Math.min(Math.max(value, minimum), maximum);
@@ -69,12 +71,70 @@ function windowNames(window) {
         .filter(value => value.length > 0);
 }
 
+function applicationKey(window) {
+    return windowNames(window)[0] || "";
+}
+
+function windowKey(window) {
+    if (window && window.internalId) {
+        return String(window.internalId);
+    }
+    return `${applicationKey(window)}|${String(window && window.caption || "")}`;
+}
+
+function isManuallyProtected(window) {
+    return manuallyProtectedWindows.has(windowKey(window))
+        || manuallyProtectedApplications.has(applicationKey(window));
+}
+
+function toggleProtection(set, key) {
+    if (!key) {
+        return;
+    }
+    if (set.has(key)) {
+        set.delete(key);
+    } else {
+        set.add(key);
+    }
+    recomputeVisibleDesktops();
+}
+
+registerUserActionsMenu(function(window) {
+    if (!window || !window.normalWindow) {
+        return null;
+    }
+
+    const application = applicationKey(window);
+    const identity = windowKey(window);
+    return {
+        title: "Wallpaper Transparency",
+        items: [
+            {
+                title: "Protect this window for this session",
+                checkable: true,
+                checked: manuallyProtectedWindows.has(identity),
+                triggered: function() {
+                    toggleProtection(manuallyProtectedWindows, identity);
+                }
+            },
+            {
+                title: "Protect this application for this session",
+                checkable: true,
+                checked: manuallyProtectedApplications.has(application),
+                triggered: function() {
+                    toggleProtection(manuallyProtectedApplications, application);
+                }
+            }
+        ]
+    };
+});
+
 function isProtected(window) {
     if (!window) {
         return false;
     }
 
-    if (window.fullScreen) {
+    if (window.fullScreen || isManuallyProtected(window)) {
         return true;
     }
 
@@ -86,6 +146,7 @@ function isProtected(window) {
         return name === pattern.exact;
     }));
 }
+
 
 function isEligible(window) {
     return isLive(window)

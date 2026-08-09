@@ -39,8 +39,13 @@ Enable **Wallpaper Transparency** in **System Settings → Window Management →
 Configure it from the script's settings button. Protected classes accept comma-separated values:
 
 - `[kitty]` — exact match
+
 - `{steam_app}` — contains match
 - `gamescope` — exact match
+
+## Titlebar actions
+
+KWin adds a **Wallpaper Transparency** submenu under a window's titlebar **More Actions** menu. The actions protect the selected window or its application for the current script session. These protections are intentionally not persisted by the script; use KWin Window Rules or the script configuration for durable exclusions.
 
 ## Disable or uninstall
 
