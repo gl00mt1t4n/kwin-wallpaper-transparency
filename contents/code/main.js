@@ -365,11 +365,17 @@ function recomputeDesktop(desktop, key) {
     lower.filter(isEligible).forEach(window => applyOverride(window, key, "hidden"));
 }
 
+function allDesktops() {
+    const desktops = workspace.desktops || [];
+    return desktops.length > 0 ? desktops : [workspace.currentDesktop];
+}
+
 function recomputeVisibleDesktops() {
     if (changingOpacity) {
         return;
     }
 
+    setVisibleDesktops(allDesktops());
     for (const key of visibleDesktopKeys) {
         recomputeDesktop(desktopObjects.get(key), key);
     }
@@ -390,7 +396,6 @@ function onDesktopChanged(previous, current) {
     const currentKey = rememberDesktop(current || workspace.currentDesktop);
     lastDesktop = current || workspace.currentDesktop;
 
-    setVisibleDesktops([previous || lastDesktop, current || workspace.currentDesktop]);
     if (previousKey) {
         desktopObjects.set(previousKey, previous || desktopObjects.get(previousKey));
     }
@@ -420,7 +425,7 @@ function forget(window) {
 
 lastDesktop = workspace.currentDesktop;
 rememberDesktop(lastDesktop);
-setVisibleDesktops([lastDesktop]);
+setVisibleDesktops(allDesktops());
 rememberActive(workspace.activeWindow);
 workspace.windowList().forEach(watch);
 workspace.windowAdded.connect(window => {
@@ -434,6 +439,7 @@ workspace.windowActivated.connect(window => {
 });
 workspace.currentDesktopChanged.connect(onDesktopChanged);
 workspace.currentActivityChanged.connect(recomputeVisibleDesktops);
+workspace.desktopsChanged.connect(recomputeVisibleDesktops);
 workspace.screensChanged.connect(recomputeVisibleDesktops);
 
 recomputeVisibleDesktops();

@@ -4,7 +4,7 @@ A small Plasma 6 KWin script that lets translucent windows reveal the desktop wa
 
 When an eligible window is focused, lower overlapping eligible windows are temporarily set to opacity `0`. The focused window's normal KWin opacity then reveals the desktop behind it. Lower windows remain open and in their normal stacking/task-switcher history.
 
-During a desktop slide, the script keeps independent suppression state for the source and destination desktops. Both desktop layers can therefore preserve their wallpaper-only overlap state while KWin animates between them.
+The script maintains suppression state for every virtual desktop and recomputes those states on KWin window, focus, geometry, output, activity, and desktop changes. During a desktop slide, both desktop layers are therefore already in their wallpaper-only overlap state; no polling loop is used.
 
 ## Safety behavior
 
