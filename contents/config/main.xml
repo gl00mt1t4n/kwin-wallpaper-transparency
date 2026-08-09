@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+                          http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name="" />
+  <group name="">
+    <entry name="overlapThreshold" type="Int">
+      <label>Minimum percentage of a lower window that must be covered</label>
+      <default>1</default>
+    </entry>
+    <entry name="protectedClasses" type="String">
+      <label>Protected application classes</label>
+      <default>kitty,{steam_app},gamescope</default>
+    </entry>
+    <entry name="barrierMode" type="Bool">
+      <label>Make the focused window opaque above protected windows</label>
+      <default>true</default>
+    </entry>
+    <entry name="debugLogging" type="Bool">
+      <label>Enable debug logging</label>
+      <default>false</default>
+    </entry>
+  </group>
+</kcfg>

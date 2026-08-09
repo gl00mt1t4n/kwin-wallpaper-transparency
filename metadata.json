@@ -1,0 +1,23 @@
+{
+    "KPlugin": {
+        "Name": "Wallpaper Transparency",
+        "Description": "Make translucent windows reveal the desktop wallpaper instead of lower application windows",
+        "Icon": "preferences-system-windows",
+        "Authors": [
+            {
+                "Name": "gl00m"
+            }
+        ],
+        "Id": "wallpaper-transparency",
+        "Version": "0.1.0",
+        "License": "GPL-3.0-or-later",
+        "Website": "https://github.com/gl00mt1t4n/kwin-wallpaper-transparency"
+    },
+    "X-Plasma-API": "javascript",
+    "X-Plasma-MainScript": "code/main.js",
+    "KPackageStructure": "KWin/Script",
+    "X-KDE-ServiceTypes": [
+        "KWin/Script"
+    ],
+    "X-KDE-ConfigModule": "kwin/effects/configs/kcm_kwin4_genericscripted"
+}
