@@ -9,8 +9,8 @@
 const PREFIX = "wallpaper-transparency:";
 
 const config = {
-    activeOpacity: clamp(Number(readConfig("activeOpacity", 89)) / 100, 0.1, 1),
-    inactiveOpacity: clamp(Number(readConfig("inactiveOpacity", 89)) / 100, 0.1, 1),
+    activeOpacity: clamp(Number(readConfig("activeOpacity", 91)) / 100, 0.1, 1),
+    inactiveOpacity: clamp(Number(readConfig("inactiveOpacity", 91)) / 100, 0.1, 1),
     overlapThreshold: clamp(Number(readConfig("overlapThreshold", 1)) / 100, 0.01, 1),
     protectedClasses: parsePatterns(String(readConfig(
         "protectedClasses",
