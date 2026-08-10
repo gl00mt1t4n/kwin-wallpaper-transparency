@@ -36,6 +36,13 @@ kpackagetool6 -t KWin/Script -i .
 kwriteconfig6 --file kwinrc --group Plugins --key wallpaper-transparencyEnabled true
 qdbus6 org.kde.KWin /KWin reconfigure
 ```
+When upgrading an already enabled copy, KWin may retain the old JavaScript instance. Toggle **Wallpaper Transparency** off and on in System Settings, or reload it explicitly:
+
+```bash
+qdbus6 org.kde.KWin /Scripting unloadScript wallpaper-transparency
+qdbus6 org.kde.KWin /Scripting loadScript "$HOME/.local/share/kwin/scripts/wallpaper-transparency/contents/code/main.js" wallpaper-transparency
+qdbus6 org.kde.KWin /Scripting start
+```
 
 Enable **Wallpaper Transparency** in **System Settings → Window Management → KWin Scripts** if KWin does not enable it automatically.
 
