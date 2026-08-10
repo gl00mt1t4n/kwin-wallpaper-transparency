@@ -450,6 +450,9 @@ function watch(window) {
     window.fullScreenChanged.connect(recomputeVisibleDesktops);
     window.minimizedChanged.connect(recomputeVisibleDesktops);
     window.outputChanged.connect(recomputeVisibleDesktops);
+    if (window.desktopsChanged) {
+        window.desktopsChanged.connect(recomputeVisibleDesktops);
+    }
 }
 
 function forget(window) {
@@ -466,6 +469,15 @@ workspace.windowList().forEach(watch);
 workspace.windowAdded.connect(window => {
     watch(window);
     recomputeVisibleDesktops();
+    // Deferred recompute: Wayland windows may not be fully composited yet.
+    var timer = new QTimer();
+    timer.interval = 150;
+    timer.singleShot = true;
+    timer.timeout.connect(() => {
+        recomputeVisibleDesktops();
+        timer.destroy();
+    });
+    timer.start();
 });
 workspace.windowRemoved.connect(forget);
 workspace.windowActivated.connect(window => {
