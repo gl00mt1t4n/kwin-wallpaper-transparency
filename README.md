@@ -2,7 +2,7 @@
 
 A small Plasma 6 KWin script that owns normal window opacity and lets eligible windows reveal the desktop wallpaper instead of lower application windows.
 
-When an eligible window is focused, the script sets its normal opacity to `95%` by default and lower overlapping eligible windows to opacity `0`. Inactive normal windows use `90%`. Lower windows remain open and in their normal stacking/task-switcher history.
+When an eligible window is focused, the script sets its normal opacity to `96%` by default and lower overlapping eligible windows to opacity `0`. Inactive normal windows use `91%`. Lower windows remain open and in their normal stacking/task-switcher history.
 
 The script maintains suppression state for every virtual desktop and explicitly resynchronizes normal opacity on focus, desktop, geometry, fullscreen, output, activity, and lifecycle changes. No global KWin opacity rule is required.
 
@@ -20,7 +20,7 @@ If a protected window overlaps the focused window, the focused window becomes te
 
 - KDE Plasma 6 with KWin
 - Wayland or X11
-- The script's normal opacity settings (default active `95%`, inactive `90%`)
+- The script's normal opacity settings (default active `96%`, inactive `91%`)
 
 The script owns normal opacity. A global KWin opacity rule should not be enabled alongside it, because that can leave focus-dependent opacity stale. Kitty remains special: its KWin opacity is kept at `100%` so Kitty's own background opacity remains in control.
 
@@ -39,7 +39,7 @@ qdbus6 org.kde.KWin /KWin reconfigure
 Enable **Wallpaper Transparency** in **System Settings → Window Management → KWin Scripts** if KWin does not enable it automatically.
 
 Configure it from the script's settings button. Protected classes accept comma-separated values:
-The settings panel controls active and inactive opacity. Defaults are active `95%` and inactive `90%`.
+The settings panel controls active and inactive opacity. Defaults are active `96%` and inactive `91%`.
 
 - `[kitty]` — exact match
 
