@@ -9,8 +9,8 @@
 const PREFIX = "wallpaper-transparency:";
 
 const config = {
-    activeOpacity: clamp(Number(readConfig("activeOpacity", 96)) / 100, 0.1, 1),
-    inactiveOpacity: clamp(Number(readConfig("inactiveOpacity", 91)) / 100, 0.1, 1),
+    activeOpacity: clamp(Number(readConfig("activeOpacity", 89)) / 100, 0.1, 1),
+    inactiveOpacity: clamp(Number(readConfig("inactiveOpacity", 89)) / 100, 0.1, 1),
     overlapThreshold: clamp(Number(readConfig("overlapThreshold", 1)) / 100, 0.01, 1),
     protectedClasses: parsePatterns(String(readConfig(
         "protectedClasses",
@@ -385,6 +385,13 @@ function recomputeDesktop(desktop, key) {
     const stack = workspace.stackingOrder || [];
     const leader = leaderForDesktop(desktop, key, stack);
     if (!isEligible(leader)) {
+        // Active window is a protected all-desktops window (e.g. pinned Kitty):
+        // suppress all eligible windows so only wallpaper shows through.
+        const active = workspace.activeWindow;
+        if (active && active.onAllDesktops && isProtected(active) && isLive(active)) {
+            stack.filter(w => isEligible(w) && windowOnDesktop(w, key))
+                .forEach(w => applyOverride(w, key, "hidden"));
+        }
         return;
     }
 
