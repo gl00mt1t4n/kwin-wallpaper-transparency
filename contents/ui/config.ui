@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>620</width>
-    <height>260</height>
+    <height>340</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,13 +15,53 @@
   </property>
   <layout class="QFormLayout" name="formLayout">
    <item row="0" column="0">
+    <widget class="QLabel" name="activeOpacityLabel">
+     <property name="text">
+      <string>Active window opacity (%)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QSpinBox" name="kcfg_activeOpacity">
+     <property name="minimum">
+      <number>10</number>
+     </property>
+     <property name="maximum">
+      <number>100</number>
+     </property>
+     <property name="value">
+      <number>95</number>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="inactiveOpacityLabel">
+     <property name="text">
+      <string>Inactive window opacity (%)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QSpinBox" name="kcfg_inactiveOpacity">
+     <property name="minimum">
+      <number>10</number>
+     </property>
+     <property name="maximum">
+      <number>100</number>
+     </property>
+     <property name="value">
+      <number>90</number>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
     <widget class="QLabel" name="overlapThresholdLabel">
      <property name="text">
       <string>Overlap threshold (%)</string>
      </property>
     </widget>
    </item>
-   <item row="0" column="1">
+   <item row="2" column="1">
     <widget class="QSpinBox" name="kcfg_overlapThreshold">
      <property name="minimum">
       <number>1</number>
@@ -34,14 +74,14 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0">
+   <item row="3" column="0">
     <widget class="QLabel" name="protectedClassesLabel">
      <property name="text">
       <string>Protected application classes</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="1">
+   <item row="3" column="1">
     <widget class="QLineEdit" name="kcfg_protectedClasses">
      <property name="toolTip">
       <string>Comma-separated values. Use [name] for exact matches and {text} for contains matches.</string>
@@ -51,14 +91,14 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="0">
+   <item row="4" column="0">
     <widget class="QLabel" name="protectedClassesHelpLabel">
      <property name="text">
       <string>Examples: [kitty], {steam_app}, gamescope</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
+   <item row="4" column="1">
     <spacer name="helpSpacer">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -74,7 +114,7 @@
      </property>
     </spacer>
    </item>
-   <item row="3" column="0" colspan="2">
+   <item row="5" column="0" colspan="2">
     <widget class="QCheckBox" name="kcfg_barrierMode">
      <property name="text">
       <string>Make focused windows opaque above protected windows</string>
@@ -84,7 +124,7 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="0" colspan="2">
+   <item row="6" column="0" colspan="2">
     <widget class="QCheckBox" name="kcfg_debugLogging">
      <property name="text">
       <string>Enable debug logging</string>

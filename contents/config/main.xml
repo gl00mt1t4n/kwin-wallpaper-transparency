@@ -5,6 +5,14 @@
                           http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
   <kcfgfile name="" />
   <group name="">
+    <entry name="activeOpacity" type="Int">
+      <label>Active window opacity (%)</label>
+      <default>95</default>
+    </entry>
+    <entry name="inactiveOpacity" type="Int">
+      <label>Inactive window opacity (%)</label>
+      <default>90</default>
+    </entry>
     <entry name="overlapThreshold" type="Int">
       <label>Minimum percentage of a lower window that must be covered</label>
       <default>1</default>

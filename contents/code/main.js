@@ -1,14 +1,16 @@
 /*
  * Wallpaper Transparency
  *
- * Keep normal KWin opacity rules in charge of a window's usual opacity.
- * When an eligible focused window overlaps lower windows, temporarily make
- * those lower windows invisible so the compositor reveals the desktop.
+ * The script owns normal window opacity. When an eligible focused window
+ * overlaps lower windows, temporarily make those lower windows invisible so
+ * the compositor reveals the desktop.
  */
 
 const PREFIX = "wallpaper-transparency:";
 
 const config = {
+    activeOpacity: clamp(Number(readConfig("activeOpacity", 95)) / 100, 0.1, 1),
+    inactiveOpacity: clamp(Number(readConfig("inactiveOpacity", 90)) / 100, 0.1, 1),
     overlapThreshold: clamp(Number(readConfig("overlapThreshold", 1)) / 100, 0.01, 1),
     protectedClasses: parsePatterns(String(readConfig(
         "protectedClasses",
@@ -231,6 +233,33 @@ function setOpacity(window, opacity) {
     changingOpacity = false;
 }
 
+function normalOpacity(window) {
+    if (!isLive(window) || !window.normalWindow) {
+        return null;
+    }
+    if (window.fullScreen || isProtected(window)) {
+        return 1;
+    }
+    return window === workspace.activeWindow
+        ? config.activeOpacity
+        : config.inactiveOpacity;
+}
+
+function restoreNormalOpacity(window) {
+    const opacity = normalOpacity(window);
+    if (opacity !== null) {
+        setOpacity(window, opacity);
+    }
+}
+
+function syncNormalOpacity() {
+    workspace.windowList().forEach(window => {
+        if (!overrides.has(window)) {
+            restoreNormalOpacity(window);
+        }
+    });
+}
+
 function applyOverride(window, key, mode) {
     if (!isLive(window)) {
         return;
@@ -238,10 +267,7 @@ function applyOverride(window, key, mode) {
 
     let record = overrides.get(window);
     if (!record) {
-        record = {
-            baseOpacity: Number(window.opacity),
-            owners: new Map()
-        };
+        record = { owners: new Map() };
         overrides.set(window, record);
     }
 
@@ -259,9 +285,7 @@ function releaseOverride(window, key) {
 
     record.owners.delete(key);
     if (record.owners.size === 0) {
-        if (isLive(window)) {
-            setOpacity(window, record.baseOpacity);
-        }
+        restoreNormalOpacity(window);
         overrides.delete(window);
         return;
     }
@@ -277,6 +301,14 @@ function releaseDesktop(key) {
         }
     }
 }
+
+function releaseAllOverrides() {
+    for (const window of overrides.keys()) {
+        restoreNormalOpacity(window);
+    }
+    overrides.clear();
+}
+
 
 function releaseWindow(window) {
     const record = overrides.get(window);
@@ -375,7 +407,9 @@ function recomputeVisibleDesktops() {
         return;
     }
 
+    releaseAllOverrides();
     setVisibleDesktops(allDesktops());
+    syncNormalOpacity();
     for (const key of visibleDesktopKeys) {
         recomputeDesktop(desktopObjects.get(key), key);
     }
@@ -402,6 +436,7 @@ function onDesktopChanged(previous, current) {
     if (currentKey) {
         desktopObjects.set(currentKey, current || desktopObjects.get(currentKey));
     }
+    rememberActive(workspace.activeWindow);
     recomputeVisibleDesktops();
 }
 

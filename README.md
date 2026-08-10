@@ -1,14 +1,14 @@
 # Wallpaper Transparency
 
-A small Plasma 6 KWin script that lets translucent windows reveal the desktop wallpaper instead of lower application windows.
+A small Plasma 6 KWin script that owns normal window opacity and lets eligible windows reveal the desktop wallpaper instead of lower application windows.
 
-When an eligible window is focused, lower overlapping eligible windows are temporarily set to opacity `0`. The focused window's normal KWin opacity then reveals the desktop behind it. Lower windows remain open and in their normal stacking/task-switcher history.
+When an eligible window is focused, the script sets its normal opacity to `95%` by default and lower overlapping eligible windows to opacity `0`. Inactive normal windows use `90%`. Lower windows remain open and in their normal stacking/task-switcher history.
 
-The script maintains suppression state for every virtual desktop and recomputes those states on KWin window, focus, geometry, output, activity, and desktop changes. During a desktop slide, both desktop layers are therefore already in their wallpaper-only overlap state; no polling loop is used.
+The script maintains suppression state for every virtual desktop and explicitly resynchronizes normal opacity on focus, desktop, geometry, fullscreen, output, activity, and lifecycle changes. No global KWin opacity rule is required.
 
 ## Safety behavior
 
-The script deliberately does not minimize, hide, reorder, or focus windows. It skips fullscreen windows, protected application classes, desktop/panel windows, dialogs, popups, and other non-normal windows. By default it protects:
+The script deliberately does not minimize, hide, reorder, or focus windows. It keeps fullscreen windows and protected application classes opaque, and skips desktop/panel windows, dialogs, popups, and other non-normal windows. By default it protects:
 
 - `kitty`
 - classes containing `steam_app`
@@ -20,9 +20,11 @@ If a protected window overlaps the focused window, the focused window becomes te
 
 - KDE Plasma 6 with KWin
 - Wayland or X11
-- A normal KWin opacity rule, for example active `95%` and inactive `90%`
+- The script's normal opacity settings (default active `95%`, inactive `90%`)
 
-The script does not set a window's normal opacity. It temporarily overrides lower windows during overlap and restores their previous values.
+The script owns normal opacity. A global KWin opacity rule should not be enabled alongside it, because that can leave focus-dependent opacity stale. Kitty remains special: its KWin opacity is kept at `100%` so Kitty's own background opacity remains in control.
+
+Focus and desktop changes resynchronize all live normal windows. This prevents a window restored from the hidden-underlap state from retaining the opacity it had while inactive.
 
 ## Install locally
 
@@ -37,11 +39,16 @@ qdbus6 org.kde.KWin /KWin reconfigure
 Enable **Wallpaper Transparency** in **System Settings → Window Management → KWin Scripts** if KWin does not enable it automatically.
 
 Configure it from the script's settings button. Protected classes accept comma-separated values:
+The settings panel controls active and inactive opacity. Defaults are active `95%` and inactive `90%`.
 
 - `[kitty]` — exact match
 
 - `{steam_app}` — contains match
 - `gamescope` — exact match
+
+## Desktop transitions
+
+The script keeps steady-state opacity and suppression synchronized across all virtual desktops. KWin's Slide effect still owns the per-frame desktop animation; exact wallpaper-only painting when a slide is stopped halfway requires a compositor-level effect and is outside this script's window-state API.
 
 ## Titlebar actions
 
