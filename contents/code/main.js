@@ -9,8 +9,8 @@
 const PREFIX = "wallpaper-transparency:";
 
 const config = {
-    activeOpacity: clamp(Number(readConfig("activeOpacity", 96)) / 100, 0.1, 1),
-    inactiveOpacity: clamp(Number(readConfig("inactiveOpacity", 91)) / 100, 0.1, 1),
+    activeOpacity: clamp(Number(readConfig("activeOpacity", 95)) / 100, 0.1, 1),
+    inactiveOpacity: clamp(Number(readConfig("inactiveOpacity", 90)) / 100, 0.1, 1),
     overlapThreshold: clamp(Number(readConfig("overlapThreshold", 1)) / 100, 0.01, 1),
     protectedClasses: parsePatterns(String(readConfig(
         "protectedClasses",
@@ -149,26 +149,15 @@ function isProtected(window) {
     }));
 }
 
+
 function isEligible(window) {
     return isLive(window)
         && window.normalWindow
         && !window.specialWindow
         && !window.fullScreen
+        && !window.onAllDesktops
         && !isProtected(window);
 }
-
-function isWallpaperLeader(window) {
-    return isEligible(window)
-        || (isLive(window)
-            && window.normalWindow
-            && !window.specialWindow
-            && !window.fullScreen
-            && window.onAllDesktops
-            && window === workspace.activeWindow
-            && isProtected(window));
-}
-
-
 
 function isBarrier(window) {
     if (!isLive(window) || window.desktopWindow || window.dock) {
@@ -194,29 +183,15 @@ function rememberDesktop(desktop) {
 }
 
 function windowOnDesktop(window, key) {
-    if (!window) {
+    if (!window || window.onAllDesktops) {
         return false;
-    }
-
-    if (window.onAllDesktops) {
-        return true;
     }
 
     return (window.desktops || []).some(desktop => desktopKey(desktop) === key);
 }
 
 function rememberActive(window) {
-    if (!window) {
-        return;
-    }
-
-    if (window.onAllDesktops) {
-        allDesktops().forEach(desktop => {
-            const key = rememberDesktop(desktop);
-            if (key) {
-                lastActiveByDesktop.set(key, window);
-            }
-        });
+    if (!window || window.onAllDesktops) {
         return;
     }
 
@@ -227,7 +202,6 @@ function rememberActive(window) {
         }
     });
 }
-
 
 function intersectionRatio(top, lower) {
     const left = Math.max(top.x, lower.x);
@@ -410,7 +384,7 @@ function recomputeDesktop(desktop, key) {
 
     const stack = workspace.stackingOrder || [];
     const leader = leaderForDesktop(desktop, key, stack);
-    if (!isWallpaperLeader(leader)) {
+    if (!isEligible(leader)) {
         return;
     }
 
