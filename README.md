@@ -4,7 +4,7 @@ A small Plasma 6 KWin script that owns normal window opacity and lets eligible w
 
 When an eligible window is focused, the script sets its normal opacity to `96%` by default and lower overlapping eligible windows to opacity `0`. Inactive normal windows use `91%`. Lower windows remain open and in their normal stacking/task-switcher history.
 
-The script maintains suppression state for every virtual desktop and explicitly resynchronizes normal opacity on focus, desktop, geometry, fullscreen, output, activity, and lifecycle changes. No global KWin opacity rule is required.
+The script maintains suppression state for every virtual desktop and explicitly resynchronizes normal opacity on focus, desktop, geometry, fullscreen, output, activity, and lifecycle changes. Windows marked **On All Desktops** participate in every desktop's stacking calculation, so a focused protected normal window such as Kitty can preserve its own opacity while lower eligible windows are suppressed on each desktop. No global KWin opacity rule is required.
 
 ## Safety behavior
 
@@ -14,7 +14,7 @@ The script deliberately does not minimize, hide, reorder, or focus windows. It k
 - classes containing `steam_app`
 - `gamescope`
 
-If a protected window overlaps the focused window, the focused window becomes temporarily opaque instead of revealing that protected window. This preserves game and terminal isolation at the cost of the wallpaper effect in that overlap.
+If a protected window overlaps the focused window, the focused window becomes temporarily opaque instead of revealing that protected window. This preserves game and terminal isolation at the cost of the wallpaper effect in that overlap. A focused protected normal window marked **On All Desktops** is the exception: it can lead the wallpaper reveal without the script changing its own opacity.
 
 ## Requirements
 
@@ -25,6 +25,7 @@ If a protected window overlaps the focused window, the focused window becomes te
 The script owns normal opacity. A global KWin opacity rule should not be enabled alongside it, because that can leave focus-dependent opacity stale. Kitty remains special: its KWin opacity is kept at `100%` so Kitty's own background opacity remains in control.
 
 Focus and desktop changes resynchronize all live normal windows. This prevents a window restored from the hidden-underlap state from retaining the opacity it had while inactive.
+Windows marked **On All Desktops** are remembered as the active leader for every virtual desktop while focused. Switching desktops therefore keeps the same wallpaper-only underlap behavior instead of exposing the lower application window through Kitty's own background opacity.
 
 ## Install locally
 
