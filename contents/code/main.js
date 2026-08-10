@@ -163,7 +163,10 @@ function isBarrier(window) {
     if (!isLive(window) || window.desktopWindow || window.dock) {
         return false;
     }
-
+    // onAllDesktops protected windows are suppressed, not barriers.
+    if (window.onAllDesktops && isProtected(window)) {
+        return false;
+    }
     return isProtected(window) || window.onAllDesktops || !window.normalWindow;
 }
 
@@ -183,18 +186,28 @@ function rememberDesktop(desktop) {
 }
 
 function windowOnDesktop(window, key) {
-    if (!window || window.onAllDesktops) {
+    if (!window) {
         return false;
     }
-
+    if (window.onAllDesktops) {
+        return true;
+    }
     return (window.desktops || []).some(desktop => desktopKey(desktop) === key);
 }
 
 function rememberActive(window) {
-    if (!window || window.onAllDesktops) {
+    if (!window) {
         return;
     }
-
+    if (window.onAllDesktops) {
+        // Only remember on the current desktop, not all desktops.
+        const current = workspace.currentDesktop;
+        const key = rememberDesktop(current);
+        if (key) {
+            lastActiveByDesktop.set(key, window);
+        }
+        return;
+    }
     (window.desktops || []).forEach(desktop => {
         const key = rememberDesktop(desktop);
         if (key) {
@@ -386,21 +399,33 @@ function recomputeDesktop(desktop, key) {
     const leader = leaderForDesktop(desktop, key, stack);
     if (!isEligible(leader)) {
         // Active window is a protected all-desktops window (e.g. pinned Kitty):
-        // suppress all eligible windows so only wallpaper shows through.
+        // suppress all eligible and onAllDesktops-protected windows so only
+        // wallpaper shows through.
         const active = workspace.activeWindow;
         if (active && active.onAllDesktops && isProtected(active) && isLive(active)) {
-            stack.filter(w => isEligible(w) && windowOnDesktop(w, key))
-                .forEach(w => applyOverride(w, key, "hidden"));
+            stack.forEach(w => {
+                if (w === active) return;
+                if (isEligible(w) && windowOnDesktop(w, key)) {
+                    applyOverride(w, key, "hidden");
+                }
+            });
         }
         return;
     }
 
+    // Suppress onAllDesktops protected windows below the leader
+    // so wallpaper shows through the leader, not pinned terminals.
     const lower = lowerWindowsFor(leader, key, stack);
+    lower.forEach(w => {
+        if (w.onAllDesktops && isProtected(w) && w !== workspace.activeWindow) {
+            applyOverride(w, key, "hidden");
+        }
+    });
+
     if (config.barrierMode && lower.some(isBarrier)) {
         applyOverride(leader, key, "barrier");
         return;
     }
-
     lower.filter(isEligible).forEach(window => applyOverride(window, key, "hidden"));
 }
 
