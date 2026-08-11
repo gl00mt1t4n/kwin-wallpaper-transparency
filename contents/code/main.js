@@ -523,3 +523,15 @@ workspace.desktopsChanged.connect(recomputeVisibleDesktops);
 workspace.screensChanged.connect(recomputeVisibleDesktops);
 
 recomputeVisibleDesktops();
+
+// Deferred startup retries — windows may not be fully composited at login.
+[500, 1500, 3000].forEach(function(delay) {
+    var startupTimer = new QTimer();
+    startupTimer.interval = delay;
+    startupTimer.singleShot = true;
+    startupTimer.timeout.connect(function() {
+        recomputeVisibleDesktops();
+        startupTimer.destroy();
+    });
+    startupTimer.start();
+});
