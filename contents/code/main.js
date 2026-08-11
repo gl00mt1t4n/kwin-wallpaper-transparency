@@ -378,6 +378,7 @@ function lowerWindowsFor(leader, key, stack) {
     for (let index = 0; index < leaderIndex; index += 1) {
         const candidate = stack[index];
         if (!isLive(candidate)
+            || !candidate.normalWindow
             || !windowOnDesktop(candidate, key)
             || !sharesDesktop(leader, candidate)
             || intersectionRatio(leader, candidate) < config.overlapThreshold) {
